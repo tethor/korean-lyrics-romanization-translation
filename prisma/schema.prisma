@@ -1,0 +1,24 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Song {
+  id            Int      @id @default(autoincrement())
+  title         String
+  artist        String
+  slug          String   @unique
+  original      String   // Letra en coreano (con \n)
+  romanized     String   // Romanización (con \n)
+  translationEn String   // Traducción inglés (con \n)
+  translationEs String   // Traducción español (con \n)
+  contentHash   String
+  createdAt     DateTime @default(now())
+}
