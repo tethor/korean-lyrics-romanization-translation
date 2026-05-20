@@ -256,19 +256,20 @@ export default function Home() {
           rel="noopener noreferrer"
           className="max-w-5xl mx-auto mb-4 flex items-center justify-between gap-3 bg-[#F472B6] border-4 border-black px-4 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ec4899] transition-colors group"
         >
-          <div className="flex items-center gap-2 text-white font-bold text-sm md:text-base">
-            <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" />
-            <span>¿Te gusta K-Pop? Visita <strong>POCAPAY GO</strong> y compra álbumes, photocards y más 🛒</span>
-            <ExternalLink className="w-3 h-3 md:w-4 md:h-4 opacity-60 group-hover:opacity-100 transition-opacity" />
+          <div className="flex flex-wrap items-center gap-2 text-white font-bold text-sm md:text-base leading-tight">
+            <ShoppingBag className="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+            <span className="hidden md:inline">¿Te gusta K-Pop? Visita <strong>POCAPAY GO</strong> y compra álbumes, photocards y más 🛒</span>
+            <span className="md:hidden">¿Te gusta K-Pop? Visita <strong>POCAPAY GO</strong> 🛒</span>
+            <ExternalLink className="w-3 h-3 md:w-4 md:h-4 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setBannerDismissed(true);
-            }}
-            className="p-1 hover:bg-white/20 rounded transition-colors shrink-0"
-          >
+         <button
+           onClick={(e) => {
+             e.preventDefault();
+             e.stopPropagation();
+             setBannerDismissed(true);
+           }}
+            className="min-w-11 min-h-11 flex items-center justify-center hover:bg-white/20 rounded transition-colors shrink-0"
+         >
             <X className="w-4 h-4 text-white" />
           </button>
         </a>
@@ -367,14 +368,14 @@ export default function Home() {
           </div>
 
           {/* Sticker */}
-          <div className="hidden lg:flex bg-[#FEF08A] border-4 border-black p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] rotate-3 justify-center items-center gap-2 font-bold text-sm">
+          <div className="flex lg:flex bg-[#FEF08A] border-4 border-black p-4 shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] rotate-3 justify-center items-center gap-2 font-bold text-sm">
             <Heart className="w-5 h-5 text-black" />
             POWERED BY POCAPAY GO
             <Heart className="w-5 h-5 text-black" />
           </div>
 
           {/* Social Media */}
-          <div className="hidden lg:flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             <a
               href="https://pocapay.com"
               target="_blank"
@@ -432,7 +433,7 @@ export default function Home() {
                           handleTranslateLang(lang.code);
                         }}
                         disabled={translatingLang !== null}
-                        className={`px-3 md:px-4 py-1 font-bold transition-colors text-sm flex items-center gap-1 ${
+                        className={`px-3 md:px-4 h-11 font-bold transition-colors text-sm flex items-center gap-1 ${
                           targetLang === lang.code
                             ? "bg-[#F472B6] text-white"
                             : "bg-black text-white hover:bg-gray-800"
@@ -450,7 +451,7 @@ export default function Home() {
                   <div className="flex border-2 border-white overflow-hidden shadow-[2px_2px_0px_0px_rgba(255,255,255,0.3)]">
                     <button
                       onClick={() => setViewMode("table")}
-                      className={`px-3 py-1 font-bold transition-colors text-sm ${
+                      className={`px-3 h-11 font-bold transition-colors text-sm flex items-center ${
                         viewMode === "table"
                           ? "bg-[#8B5CF6] text-white"
                           : "bg-black text-white hover:bg-gray-800"
@@ -460,7 +461,7 @@ export default function Home() {
                     </button>
                     <button
                       onClick={() => setViewMode("furigana")}
-                      className={`px-3 py-1 font-bold transition-colors text-sm ${
+                      className={`px-3 h-11 font-bold transition-colors text-sm flex items-center ${
                         viewMode === "furigana"
                           ? "bg-[#8B5CF6] text-white"
                           : "bg-black text-white hover:bg-gray-800"
@@ -476,7 +477,7 @@ export default function Home() {
                   <button
                     onClick={handleCopy}
                     title="Copiar todo"
-                    className="p-2 hover:bg-white/10 rounded transition-colors"
+                    className="min-w-11 min-h-11 flex items-center justify-center hover:bg-white/10 rounded transition-colors"
                   >
                     {copied ? (
                       <Check className="w-4 h-4 text-green-400" />
@@ -487,14 +488,14 @@ export default function Home() {
                   <button
                     onClick={handleExportTxt}
                     title="Exportar .txt"
-                    className="p-2 hover:bg-white/10 rounded transition-colors"
+                    className="min-w-11 min-h-11 flex items-center justify-center hover:bg-white/10 rounded transition-colors"
                   >
                     <FileText className="w-4 h-4" />
                   </button>
                   <button
                     onClick={handleExportSrt}
                     title="Exportar .srt (subtítulos)"
-                    className="p-2 hover:bg-white/10 rounded transition-colors"
+                    className="min-w-11 min-h-11 flex items-center justify-center hover:bg-white/10 rounded transition-colors"
                   >
                     <Download className="w-4 h-4" />
                   </button>
@@ -573,7 +574,7 @@ function TableView({
           </div>
 
           {/* Translation */}
-          <div className="col-span-12 md:col-span-4 font-medium text-slate-600 italic text-sm md:text-base border-t-2 border-dashed border-slate-300 md:border-0 pt-2 md:pt-0 mt-1 md:mt-0 flex items-start gap-2">
+          <div className="col-span-12 md:col-span-4 font-medium text-slate-600 italic text-sm md:text-base pt-2 md:pt-0 mt-1 md:mt-0 flex items-start gap-2">
             <span className="flex-1">
               {line[langKey] === null ? (
                 <TranslationSkeleton />
@@ -582,7 +583,7 @@ function TableView({
                   Error
                   <button
                     onClick={() => onRetry(idx)}
-                    className="text-xs underline hover:text-red-700"
+                    className="min-w-11 min-h-11 inline-flex items-center justify-center text-xs underline hover:text-red-700"
                   >
                     Reintentar
                   </button>
