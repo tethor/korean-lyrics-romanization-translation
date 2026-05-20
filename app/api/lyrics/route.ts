@@ -13,7 +13,9 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1. Try LRCLIB (free, no API key, great K-Pop coverage)
-    const lrclibUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(artist)}`;
+    // Clean artist name: remove parenthetical text (e.g. Korean names) from Genius
+    const cleanArtist = artist.replace(/\s*\(.*?\)\s*/g, "").trim();
+    const lrclibUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(cleanArtist)}`;
     const lrclibRes = await fetch(lrclibUrl, {
       headers: { "User-Agent": "KLyricNeo/1.0" },
     });
