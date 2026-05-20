@@ -22,24 +22,15 @@ export async function GET(req: NextRequest) {
       const results = await lrclibRes.json();
       if (results.length > 0) {
         const best = results[0];
-        const rawLyrics = best.plainLyrics || "";
+        const rawLyrics = (best.plainLyrics || "").trim();
 
-        if (rawLyrics.trim()) {
-          const hangulRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
-          const lines = rawLyrics.split("\n");
-          const koreanLines = lines.filter(
-            (line: string) => line.trim() === "" || hangulRegex.test(line)
-          );
-
-          const finalLyrics = koreanLines.join("\n").trim();
-          if (finalLyrics) {
-            return NextResponse.json({ lyrics: finalLyrics });
-          }
+        if (rawLyrics) {
+          return NextResponse.json({ lyrics: rawLyrics });
         }
       }
     }
 
-    // 2. Fallback: Genius scraping (may fail due to Cloudflare)
+    // 2. Fallback: Genius scraping
     const geniusUrl = req.nextUrl.searchParams.get("url");
     if (geniusUrl && geniusUrl.startsWith("https://genius.com/")) {
       const geniusRes = await fetch(geniusUrl, {
@@ -62,7 +53,7 @@ export async function GET(req: NextRequest) {
 
         if (matches.length > 0) {
           const rawLyrics = matches.join("\n");
-          const cleanLyrics = rawLyrics
+          const cleaned = rawLyrics
             .replace(/<br\s*\/?>/gi, "\n")
             .replace(/<\/div>/gi, "\n")
             .replace(/<[^>]+>/g, "")
@@ -71,29 +62,18 @@ export async function GET(req: NextRequest) {
             .replace(/&gt;/g, ">")
             .replace(/&#x27;/g, "'")
             .replace(/&quot;/g, '"')
-            .replace(/\[.*?\]/g, "")
             .replace(/\n{3,}/g, "\n\n")
-            .split("\n")
-            .map((line: string) => line.trim())
-            .join("\n")
             .trim();
 
-          const hangulRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
-          const lines = cleanLyrics.split("\n");
-          const koreanLines = lines.filter(
-            (line: string) => line.trim() === "" || hangulRegex.test(line)
-          );
-
-          const finalLyrics = koreanLines.join("\n").trim();
-          if (finalLyrics) {
-            return NextResponse.json({ lyrics: finalLyrics });
+          if (cleaned) {
+            return NextResponse.json({ lyrics: cleaned });
           }
         }
       }
     }
 
     return NextResponse.json(
-      { error: "No Korean lyrics found" },
+      { error: "No lyrics found" },
       { status: 404 }
     );
   } catch (error) {
