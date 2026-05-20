@@ -124,21 +124,20 @@ export default function Home() {
     setLoading(false);
   };
 
-  // ── Translate the other language on demand ──
-  const handleTranslateOtherLang = async () => {
-    const otherLang: TargetLang = targetLang === "en" ? "es" : "en";
+  // ── Translate a specific language on demand ──
+  const handleTranslateLang = async (lang: TargetLang) => {
     const texts = lyrics.map((l) => l.original);
-    const hasOther = lyrics.some((l) =>
-      otherLang === "en" ? l.translationEn !== null : l.translationEs !== null
+    const hasLang = lyrics.some((l) =>
+      lang === "en" ? l.translationEn !== null : l.translationEs !== null
     );
-    if (hasOther) return; // already translated
+    if (hasLang) return;
 
     try {
-      const translations = await translateBatch(texts, otherLang);
+      const translations = await translateBatch(texts, lang);
       setLyrics((prev) =>
         prev.map((line, i) => ({
           ...line,
-          ...(otherLang === "en"
+          ...(lang === "en"
             ? { translationEn: translations[i] }
             : { translationEs: translations[i] }),
         }))
@@ -331,16 +330,7 @@ export default function Home() {
                         key={lang.code}
                         onClick={() => {
                           setTargetLang(lang.code);
-                          // Auto-translate if not yet translated
-                          const hasLang = lyrics.some(
-                            (l) =>
-                              (lang.code === "en"
-                                ? l.translationEn
-                                : l.translationEs) !== null
-                          );
-                          if (!hasLang) {
-                            setTimeout(() => handleTranslateOtherLang(), 100);
-                          }
+                          handleTranslateLang(lang.code);
                         }}
                         className={`px-3 md:px-4 py-1 font-bold transition-colors text-sm ${
                           targetLang === lang.code
