@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 280px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #8B5CF6, #EC4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .status {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .instructions {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.5;
+    }
+    .instructions ol {
+      padding-left: 18px;
+      margin-top: 6px;
+    }
+    .instructions li {
+      margin-bottom: 4px;
+    }
+    .footer {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #222;
+      font-size: 10px;
+      color: #444;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span style="font-size: 22px;">🎵</span>
+    <h1>K-Lyric Neo</h1>
+  </div>
+  <div class="status" id="status">
+    Abre un video de K-Pop en YouTube con subtítulos coreanos.
+  </div>
+  <div class="instructions">
+    <strong>Cómo usar:</strong>
+    <ol>
+      <li>Abre un MV de K-Pop en YouTube</li>
+      <li>Activa subtítulos coreanos (CC)</li>
+      <li>El panel aparece automáticamente</li>
+      <li>Click en una línea para saltar a ese momento</li>
+    </ol>
+  </div>
+  <div class="footer">
+    v1.0 — POCAPAY GO
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

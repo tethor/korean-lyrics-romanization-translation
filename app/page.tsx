@@ -12,12 +12,14 @@ import {
   Music2,
   RefreshCw,
   RotateCcw,
+  Search,
   Sparkles,
   Type,
 } from "lucide-react";
 
 import TranslationSkeleton from "@/components/TranslationSkeleton";
 import FullPanelLoader from "@/components/FullPanelLoader";
+import GeniusSearch from "@/components/GeniusSearch";
 import { translateBatch } from "@/app/actions";
 
 // ── Dynamic import aromanize (keep out of main bundle) ──
@@ -252,9 +254,17 @@ export default function Home() {
         <section className="lg:col-span-4 flex flex-col gap-4">
           <div className="bg-white border-4 border-black p-4 md:p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
             <label className="flex items-center gap-2 font-black text-lg md:text-xl mb-4 uppercase">
-              <Type className="w-5 h-5 md:w-6 md:h-6" />
-              Pegar Hangul
+              <Search className="w-5 h-5 md:w-6 md:h-6" />
+              Buscar o Pegar Hangul
             </label>
+
+            {/* Genius Search */}
+            <GeniusSearch onLyricsLoaded={(lyrics) => setInput(lyrics)} />
+
+            <div className="mt-3 text-center text-xs text-slate-400 font-medium">
+              — o pega manualmente —
+            </div>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
