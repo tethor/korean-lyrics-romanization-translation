@@ -1,18 +1,19 @@
-// K-Lyric Neo — YouTube Content Script v4
-// Deduplication + debounce fixes
+// K-Lyric Neo — YouTube Content Script v5
+// Fix: strict dedup + single source of truth
 
 (function () {
   "use strict";
 
   let widget = null;
-  let isActive = true;
   let targetLang = "en";
   let translationCache = {};
   let videoEl = null;
   let captionObserver = null;
-  let shownText = "";       // what's currently displayed
+  let lastRomanized = "";     // what's currently on screen
+  let lastRawText = "";       // raw Korean for translation
   let debounceTimer = null;
-  const seen = new Map();   // normalized text → true
+  let cooldownTimer = null;
+  let inCooldown = false;
 
   const KOREAN_RE = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
 
@@ -20,7 +21,6 @@
     return text.replace(/\s+/g, " ").trim();
   }
 
-  // ── Init ──
   function init() {
     if (widget) return;
     videoEl = document.querySelector("video");
@@ -36,9 +36,11 @@
     new MutationObserver(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        seen.clear();
-        shownText = "";
-        setWidgetText("", null, "Esperando...");
+        lastRomanized = "";
+        lastRawText = "";
+        inCooldown = false;
+        clearTimeout(cooldownTimer);
+        setWidget("—", null, "Esperando subtítulos...");
         setTimeout(() => {
           videoEl = document.querySelector("video");
           startCaptionObserver();
@@ -47,7 +49,6 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
-  // ── Watch caption DOM ──
   function startCaptionObserver() {
     if (captionObserver) captionObserver.disconnect();
 
@@ -58,19 +59,21 @@
     if (!target) { setTimeout(startCaptionObserver, 2000); return; }
 
     captionObserver = new MutationObserver(() => {
-      // Debounce: YouTube fires many mutations per caption change
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(readCaption, 150);
+      debounceTimer = setTimeout(readCaption, 200);
     });
 
     captionObserver.observe(target, { childList: true, subtree: true, characterData: true });
   }
 
-  // ── Read current caption ──
   function readCaption() {
-    const segments = document.querySelectorAll(".ytp-caption-segment, .captions-text");
+    // During cooldown, ignore all reads
+    if (inCooldown) return;
+
+    const segments = document.querySelectorAll(".ytp-caption-segment");
     if (!segments.length) return;
 
+    // Build full text from all segments
     let raw = "";
     segments.forEach(s => {
       const t = s.textContent.trim();
@@ -80,28 +83,32 @@
     const text = normalize(raw);
     if (!text || !KOREAN_RE.test(text)) return;
 
-    // Skip if already showing this exact text
-    if (text === shownText) return;
-    shownText = text;
-
-    showCaption(text);
-
-    // Translate only if first time seeing this text
-    if (!seen.has(text)) {
-      seen.set(text, true);
-      translateOne(text);
-    }
-  }
-
-  // ── Show caption ──
-  function showCaption(text) {
+    // Generate romanized
     const romanized = Aromanize.romanize(text);
+
+    // Skip if same romanized text is already showing
+    if (romanized === lastRomanized) return;
+
+    // Update state
+    lastRomanized = romanized;
+    lastRawText = text;
+
+    // Show immediately
     const cached = translationCache[`${targetLang}::${text}`];
-    setWidgetText(romanized, cached || null, cached ? null : "...");
+    setWidget(romanized, cached || null, cached ? null : "...");
+
+    // Translate if not cached
+    if (!cached) translateOne(text, romanized);
+
+    // Start cooldown — ignore any mutations for next 800ms
+    // This prevents the same caption from being read multiple times
+    // as YouTube updates the DOM
+    inCooldown = true;
+    clearTimeout(cooldownTimer);
+    cooldownTimer = setTimeout(() => { inCooldown = false; }, 800);
   }
 
-  // ── Translate ──
-  async function translateOne(text) {
+  async function translateOne(text, romanized) {
     const key = `${targetLang}::${text}`;
     if (translationCache[key]) return;
 
@@ -110,23 +117,20 @@
         `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=ko|${targetLang}&de=pocapay@pocapay.com`
       );
       const data = await res.json();
-      if (data.responseStatus === 200) {
-        translationCache[key] = data.responseData.translatedText;
-      } else {
-        translationCache[key] = "...";
-      }
+      translationCache[key] = data.responseStatus === 200
+        ? data.responseData.translatedText
+        : "...";
     } catch {
       translationCache[key] = "...";
     }
 
-    // Update only if still showing same text
-    if (shownText === text) {
-      setWidgetText(Aromanize.romanize(text), translationCache[key], null);
+    // Update only if still showing same caption
+    if (lastRomanized === romanized) {
+      setWidget(romanized, translationCache[key], null);
     }
   }
 
-  // ── Set widget content ──
-  function setWidgetText(romanized, translation, loadingMsg) {
+  function setWidget(romanized, translation, loadingMsg) {
     if (!widget) return;
     const romanEl = widget.querySelector(".kn-roman");
     const transEl = widget.querySelector(".kn-trans");
@@ -144,7 +148,6 @@
     }
   }
 
-  // ── Create widget ──
   function createWidget() {
     widget = document.createElement("div");
     widget.id = "klyric-widget";
@@ -164,21 +167,22 @@
     `;
     document.body.appendChild(widget);
 
-    // Lang toggle
     widget.querySelectorAll(".kn-lang").forEach(btn => {
       btn.addEventListener("click", () => {
         targetLang = btn.dataset.lang;
         widget.querySelectorAll(".kn-lang").forEach(b =>
           b.classList.toggle("kn-lang-active", b.dataset.lang === targetLang)
         );
-        if (shownText) showCaption(shownText);
+        if (lastRawText) {
+          const cached = translationCache[`${targetLang}::${lastRawText}`];
+          if (cached) setWidget(lastRomanized, cached, null);
+          else translateOne(lastRawText, lastRomanized);
+        }
       });
     });
 
-    // Close
     widget.querySelector("#kn-close").addEventListener("click", () => {
       widget.style.display = "none";
-      isActive = false;
       document.getElementById("klyric-toggle").style.display = "flex";
     });
 
@@ -213,13 +217,11 @@
     toggleBtn.style.display = "none";
     toggleBtn.addEventListener("click", () => {
       widget.style.display = "flex";
-      isActive = true;
       toggleBtn.style.display = "none";
     });
     document.body.appendChild(toggleBtn);
   }
 
-  // ── Start ──
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", () => setTimeout(init, 1500));
   } else {
