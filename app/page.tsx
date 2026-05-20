@@ -530,7 +530,7 @@ function FuriganaView({
               ) : (
                 line[langKey]
               )}
-            </p>
+            </div>
           </div>
         ))}
       <div className="h-16" />
