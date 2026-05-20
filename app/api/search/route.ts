@@ -6,7 +6,7 @@ type GeniusHit = {
   result: {
     id: number;
     title: string;
-    artist: string;
+    artist_names: string;
     song_art_image_thumbnail_url: string;
     url: string;
   };
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const results = hits.slice(0, 8).map((hit) => ({
       id: hit.result.id,
       title: hit.result.title,
-      artist: hit.result.artist,
+      artist: hit.result.artist_names,
       thumbnail: hit.result.song_art_image_thumbnail_url,
       url: hit.result.url,
     }));

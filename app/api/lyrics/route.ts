@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
     const res = await fetch(url, {
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       },
     });
 
@@ -24,40 +24,61 @@ export async function GET(req: NextRequest) {
 
     const html = await res.text();
 
-    // Extract lyrics from Genius page
-    // Lyrics are in <div data-lyrics-container="true">
-    const lyricsRegex =
+    // Try multiple extraction strategies
+    let rawLyrics = "";
+
+    // Strategy 1: data-lyrics-container (new Genius layout)
+    const containerRegex =
       /<div[^>]*data-lyrics-container="true"[^>]*>([\s\S]*?)<\/div>/gi;
-
-    const matches: string[] = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = lyricsRegex.exec(html)) !== null) {
-      matches.push(match[1]);
+    const containerMatches: string[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = containerRegex.exec(html)) !== null) {
+      containerMatches.push(m[1]);
     }
 
-    if (matches.length === 0) {
+    if (containerMatches.length > 0) {
+      rawLyrics = containerMatches.join("\n");
+    }
+
+    // Strategy 2: Lyrics__Container class (React version)
+    if (!rawLyrics) {
+      const classRegex =
+        /<div[^>]*class="[^"]*Lyrics__Container[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
+      const classMatches: string[] = [];
+      while ((m = classRegex.exec(html)) !== null) {
+        classMatches.push(m[1]);
+      }
+      if (classMatches.length > 0) {
+        rawLyrics = classMatches.join("\n");
+      }
+    }
+
+    if (!rawLyrics) {
       return NextResponse.json(
-        { error: "Could not extract lyrics" },
+        { error: "Could not extract lyrics from this page" },
         { status: 404 }
       );
     }
 
-    // Clean HTML tags and normalize
-    const rawLyrics = matches.join("\n");
+    // Clean HTML
     const cleanLyrics = rawLyrics
       .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/div>/gi, "\n")
       .replace(/<[^>]+>/g, "")
       .replace(/&amp;/g, "&")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&#x27;/g, "'")
+      .replace(/&apos;/g, "'")
       .replace(/&quot;/g, '"')
       .replace(/\[.*?\]/g, "") // Remove [Chorus], [Verse 1], etc.
       .replace(/\n{3,}/g, "\n\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .join("\n")
       .trim();
 
-    // Filter only Korean lines (has Hangul characters)
+    // Filter: keep empty lines + lines with ANY Korean characters
     const hangulRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
     const lines = cleanLyrics.split("\n");
     const koreanLines = lines.filter(
