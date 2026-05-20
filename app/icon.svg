@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#8B5CF6" stroke="#000" stroke-width="2.5"/>
+  
+  <!-- Musical note + heart hybrid -->
+  <g transform="translate(16, 16)" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Note head (heart shape) -->
+    <path d="M-4,2 C-4,0 -2,-2 0,-2 C2,-2 4,0 4,2 C4,5 0,7 0,7 C0,7 -4,5 -4,2Z" fill="#F472B6"/>
+    
+    <!-- Note stem -->
+    <line x1="3" y1="1" x2="3" y2="-9"/>
+    
+    <!-- Note flag -->
+    <path d="M3,-9 Q7,-6 7,-3" fill="none"/>
+  </g>
+</svg>
