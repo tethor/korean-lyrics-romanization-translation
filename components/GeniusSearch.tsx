@@ -12,7 +12,7 @@ type SearchResult = {
 };
 
 type Props = {
-  onLyricsLoaded: (lyrics: string) => void;
+  onLyricsLoaded: (lyrics: string, artist: string, title: string) => void;
 };
 
 export default function GeniusSearch({ onLyricsLoaded }: Props) {
@@ -94,7 +94,7 @@ export default function GeniusSearch({ onLyricsLoaded }: Props) {
         throw new Error(data.error || "Failed to load lyrics");
       }
 
-      onLyricsLoaded(data.lyrics);
+      onLyricsLoaded(data.lyrics, result.artist, result.title);
       setQuery(`${result.title} - ${result.artist}`);
       setResults([]);
     } catch (err) {

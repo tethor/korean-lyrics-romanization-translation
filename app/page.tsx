@@ -6,15 +6,19 @@ import {
   Check,
   Copy,
   Download,
+  ExternalLink,
   FileText,
   Globe,
   Heart,
+  Instagram,
   Music2,
   RefreshCw,
   RotateCcw,
   Search,
+  ShoppingBag,
   Sparkles,
   Type,
+  X,
 } from "lucide-react";
 
 import TranslationSkeleton from "@/components/TranslationSkeleton";
@@ -59,6 +63,9 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
   const [translatingLang, setTranslatingLang] = useState<TargetLang | null>(null);
+  const [currentArtist, setCurrentArtist] = useState<string | null>(null);
+  const [currentTitle, setCurrentTitle] = useState<string | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const abortRef = useRef(false);
 
   // ── Main processing ──
@@ -236,6 +243,8 @@ export default function Home() {
     setLyrics([]);
     setLoading(false);
     setProgress({ done: 0, total: 0 });
+    setCurrentArtist(null);
+    setCurrentTitle(null);
   };
 
   const hasResults = lyrics.length > 0;
@@ -243,6 +252,32 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#8B5CF6] text-black font-sans selection:bg-[#F472B6] selection:text-white p-4 md:p-8">
+      {/* ── PROMO BANNER ── */}
+      {!bannerDismissed && (
+        <a
+          href="https://pocapay.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="max-w-5xl mx-auto mb-4 flex items-center justify-between gap-3 bg-[#F472B6] border-4 border-black px-4 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#ec4899] transition-colors group"
+        >
+          <div className="flex items-center gap-2 text-white font-bold text-sm md:text-base">
+            <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" />
+            <span>¿Te gusta K-Pop? Visita <strong>POCAPAY GO</strong> y compra álbumes, photocards y más 🛒</span>
+            <ExternalLink className="w-3 h-3 md:w-4 md:h-4 opacity-60 group-hover:opacity-100 transition-opacity" />
+          </div>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setBannerDismissed(true);
+            }}
+            className="p-1 hover:bg-white/20 rounded transition-colors shrink-0"
+          >
+            <X className="w-4 h-4 text-white" />
+          </button>
+        </a>
+      )}
+
       {/* ── HEADER ── */}
       <header className="max-w-5xl mx-auto mb-8 md:mb-12 flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="bg-white border-4 border-black p-4 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] rotate-[-2deg] hover:rotate-0 transition-transform duration-300">
@@ -266,12 +301,27 @@ export default function Home() {
             </label>
 
             {/* Genius Search */}
-            <GeniusSearch onLyricsLoaded={(lyrics) => {
+            <GeniusSearch onLyricsLoaded={(lyrics, artist, title) => {
               setInput(lyrics);
               setLyrics([]);
               setLoading(false);
               setProgress({ done: 0, total: 0 });
+              setCurrentArtist(artist);
+              setCurrentTitle(title);
             }} />
+
+            {/* ── COMPRAR ÁLBUM CTA ── */}
+            {currentArtist && (
+              <a
+                href={`https://pocapay.com/products?search=${encodeURIComponent(currentArtist.split("(")[0].trim())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 w-full flex items-center justify-center gap-2 bg-[#FEF08A] border-4 border-black py-2.5 px-4 font-bold text-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-[#FDE047]"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                Comprar merch de {currentArtist.split("(")[0].trim()} en POCAPAY GO
+              </a>
+            )}
 
             <div className="mt-3 text-center text-xs text-slate-400 font-medium">
               — o pega manualmente —
@@ -325,6 +375,37 @@ export default function Home() {
             <Heart className="w-5 h-5 text-black" />
             POWERED BY POCAPAY GO
             <Heart className="w-5 h-5 text-black" />
+          </div>
+
+          {/* Social Media */}
+          <div className="hidden lg:flex flex-col gap-2">
+            <a
+              href="https://pocapay.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white border-4 border-black py-2.5 px-4 font-bold text-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2 hover:bg-slate-50"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              pocapay.com
+            </a>
+            <a
+              href="https://instagram.com/pocapay_mx"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white border-4 border-black py-2.5 px-4 font-bold text-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2 hover:bg-slate-50"
+            >
+              <Instagram className="w-4 h-4" />
+              @pocapay_mx
+            </a>
+            <a
+              href="https://tiktok.com/@pocapay"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white border-4 border-black py-2.5 px-4 font-bold text-black text-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center gap-2 hover:bg-slate-50"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.84a8.23 8.23 0 0 0 4.76 1.51V6.84a4.83 4.83 0 0 1-1-.15z"/></svg>
+              @pocapay
+            </a>
           </div>
         </section>
 

@@ -1,20 +1,24 @@
-// K-Lyric Neo — YouTube Content Script v3
-// Compact floating box: romanized + translation of current line
+// K-Lyric Neo — YouTube Content Script v4
+// Deduplication + debounce fixes
 
 (function () {
   "use strict";
 
-  // ── State ──
   let widget = null;
   let isActive = true;
   let targetLang = "en";
   let translationCache = {};
-  let currentCaptionText = "";
   let videoEl = null;
   let captionObserver = null;
-  let seenCaptions = new Map();
+  let shownText = "";       // what's currently displayed
+  let debounceTimer = null;
+  const seen = new Map();   // normalized text → true
 
   const KOREAN_RE = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/;
+
+  function normalize(text) {
+    return text.replace(/\s+/g, " ").trim();
+  }
 
   // ── Init ──
   function init() {
@@ -27,15 +31,14 @@
     observeYouTubeNavigation();
   }
 
-  // ── SPA navigation ──
   function observeYouTubeNavigation() {
     let lastUrl = location.href;
     new MutationObserver(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        seenCaptions.clear();
-        currentCaptionText = "";
-        setWidgetText("", "", "Esperando...");
+        seen.clear();
+        shownText = "";
+        setWidgetText("", null, "Esperando...");
         setTimeout(() => {
           videoEl = document.querySelector("video");
           startCaptionObserver();
@@ -54,9 +57,13 @@
 
     if (!target) { setTimeout(startCaptionObserver, 2000); return; }
 
-    captionObserver = new MutationObserver(() => readCaption());
+    captionObserver = new MutationObserver(() => {
+      // Debounce: YouTube fires many mutations per caption change
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(readCaption, 150);
+    });
+
     captionObserver.observe(target, { childList: true, subtree: true, characterData: true });
-    readCaption();
   }
 
   // ── Read current caption ──
@@ -64,34 +71,36 @@
     const segments = document.querySelectorAll(".ytp-caption-segment, .captions-text");
     if (!segments.length) return;
 
-    let text = "";
-    segments.forEach(s => { const t = s.textContent.trim(); if (t) text += (text ? " " : "") + t; });
+    let raw = "";
+    segments.forEach(s => {
+      const t = s.textContent.trim();
+      if (t) raw += (raw ? " " : "") + t;
+    });
 
-    if (!text || text === currentCaptionText) return;
-    currentCaptionText = text;
+    const text = normalize(raw);
+    if (!text || !KOREAN_RE.test(text)) return;
 
-    if (!KOREAN_RE.test(text)) return;
+    // Skip if already showing this exact text
+    if (text === shownText) return;
+    shownText = text;
 
-    // Already seen → just show cached
-    if (seenCaptions.has(text)) {
-      showCaption(text);
-      return;
-    }
-
-    // New caption
-    seenCaptions.set(text, true);
     showCaption(text);
-    translateOne(text);
+
+    // Translate only if first time seeing this text
+    if (!seen.has(text)) {
+      seen.set(text, true);
+      translateOne(text);
+    }
   }
 
-  // ── Show caption in widget ──
+  // ── Show caption ──
   function showCaption(text) {
     const romanized = Aromanize.romanize(text);
     const cached = translationCache[`${targetLang}::${text}`];
     setWidgetText(romanized, cached || null, cached ? null : "...");
   }
 
-  // ── Translate a single text ──
+  // ── Translate ──
   async function translateOne(text) {
     const key = `${targetLang}::${text}`;
     if (translationCache[key]) return;
@@ -103,13 +112,15 @@
       const data = await res.json();
       if (data.responseStatus === 200) {
         translationCache[key] = data.responseData.translatedText;
+      } else {
+        translationCache[key] = "...";
       }
     } catch {
       translationCache[key] = "...";
     }
 
-    // Update widget if still showing same text
-    if (currentCaptionText === text) {
+    // Update only if still showing same text
+    if (shownText === text) {
       setWidgetText(Aromanize.romanize(text), translationCache[key], null);
     }
   }
@@ -133,7 +144,7 @@
     }
   }
 
-  // ── Create compact widget ──
+  // ── Create widget ──
   function createWidget() {
     widget = document.createElement("div");
     widget.id = "klyric-widget";
@@ -141,8 +152,8 @@
       <div class="kn-drag" id="kn-drag-handle">
         <span class="kn-title">🎵</span>
         <div class="kn-controls">
-          <button class="kn-lang" data-lang="en">EN</button>
-          <button class="kn-lang kn-lang-active" data-lang="es">ES</button>
+          <button class="kn-lang kn-lang-active" data-lang="en">EN</button>
+          <button class="kn-lang" data-lang="es">ES</button>
           <button class="kn-hide" id="kn-close">✕</button>
         </div>
       </div>
@@ -160,8 +171,7 @@
         widget.querySelectorAll(".kn-lang").forEach(b =>
           b.classList.toggle("kn-lang-active", b.dataset.lang === targetLang)
         );
-        // Re-show current with new lang
-        if (currentCaptionText) showCaption(currentCaptionText);
+        if (shownText) showCaption(shownText);
       });
     });
 
@@ -169,8 +179,7 @@
     widget.querySelector("#kn-close").addEventListener("click", () => {
       widget.style.display = "none";
       isActive = false;
-      const btn = document.getElementById("klyric-toggle");
-      if (btn) btn.style.display = "flex";
+      document.getElementById("klyric-toggle").style.display = "flex";
     });
 
     // Drag
@@ -189,6 +198,7 @@
       widget.style.left = `${e.clientX - off.x}px`;
       widget.style.top = `${e.clientY - off.y}px`;
       widget.style.right = "auto";
+      widget.style.transform = "none";
     });
     document.addEventListener("mouseup", () => {
       dragging = false;
