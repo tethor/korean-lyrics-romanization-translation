@@ -524,7 +524,7 @@ function FuriganaView({
               {line.original}
               <rt>{line.romanized}</rt>
             </ruby>
-            <p className="text-sm md:text-base text-slate-500 italic pl-1">
+            <div className="text-sm md:text-base text-slate-500 italic pl-1">
               {line[langKey] === null ? (
                 <TranslationSkeleton />
               ) : (
