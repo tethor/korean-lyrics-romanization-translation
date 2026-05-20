@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -63,6 +63,7 @@ export default function Home() {
   const [currentTitle, setCurrentTitle] = useState<string | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const abortRef = useRef(false);
+  const outputRef = useRef<HTMLDivElement>(null);
 
   // ── Main processing ──
   const handleProcess = async () => {
@@ -246,6 +247,13 @@ export default function Home() {
   const hasResults = lyrics.length > 0;
   const langKey = targetLang === "en" ? "translationEn" : "translationEs";
 
+  // ── Auto-scroll to results on mobile ──
+  useEffect(() => {
+    if (hasResults && outputRef.current && window.innerWidth < 1024) {
+      outputRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [hasResults]);
+
   return (
     <main className="min-h-screen bg-[#8B5CF6] text-black font-sans selection:bg-[#F472B6] selection:text-white p-4 md:p-8">
       {/* ── PROMO BANNER ── */}
@@ -407,7 +415,7 @@ export default function Home() {
         </section>
 
         {/* ── OUTPUT PANEL ── */}
-        <section className="lg:col-span-8">
+        <section ref={outputRef} className="lg:col-span-8">
           <div className="bg-white border-4 border-black h-[75vh] md:h-[80vh] shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] flex flex-col overflow-hidden">
             {loading && !hasResults ? (
               <FullPanelLoader progress={progress} />
