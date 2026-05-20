@@ -58,6 +58,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [copied, setCopied] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
+  const [translatingLang, setTranslatingLang] = useState<TargetLang | null>(null);
   const abortRef = useRef(false);
 
   // ── Main processing ──
@@ -129,11 +130,14 @@ export default function Home() {
   // ── Translate a specific language on demand ──
   const handleTranslateLang = async (lang: TargetLang) => {
     const texts = lyrics.map((l) => l.original);
-    const hasLang = lyrics.some((l) =>
-      lang === "en" ? l.translationEn !== null : l.translationEs !== null
-    );
+    // Only check non-empty lines for existing translations
+    const hasLang = lyrics.some((l) => {
+      if (!l.original.trim()) return false; // Skip empty lines
+      return lang === "en" ? l.translationEn !== null : l.translationEs !== null;
+    });
     if (hasLang) return;
 
+    setTranslatingLang(lang);
     try {
       const translations = await translateBatch(texts, lang);
       setLyrics((prev) =>
@@ -144,7 +148,10 @@ export default function Home() {
             : { translationEs: translations[i] }),
         }))
       );
-    } catch {}
+    } catch {
+    } finally {
+      setTranslatingLang(null);
+    }
   };
 
   // ── Copy all to clipboard ──
@@ -259,7 +266,12 @@ export default function Home() {
             </label>
 
             {/* Genius Search */}
-            <GeniusSearch onLyricsLoaded={(lyrics) => setInput(lyrics)} />
+            <GeniusSearch onLyricsLoaded={(lyrics) => {
+              setInput(lyrics);
+              setLyrics([]);
+              setLoading(false);
+              setProgress({ done: 0, total: 0 });
+            }} />
 
             <div className="mt-3 text-center text-xs text-slate-400 font-medium">
               — o pega manualmente —
@@ -342,12 +354,16 @@ export default function Home() {
                           setTargetLang(lang.code);
                           handleTranslateLang(lang.code);
                         }}
-                        className={`px-3 md:px-4 py-1 font-bold transition-colors text-sm ${
+                        disabled={translatingLang !== null}
+                        className={`px-3 md:px-4 py-1 font-bold transition-colors text-sm flex items-center gap-1 ${
                           targetLang === lang.code
                             ? "bg-[#F472B6] text-white"
                             : "bg-black text-white hover:bg-gray-800"
-                        }`}
+                        } ${translatingLang !== null ? "opacity-60 cursor-not-allowed" : ""}`}
                       >
+                        {translatingLang === lang.code && (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        )}
                         {lang.label}
                       </button>
                     ))}
