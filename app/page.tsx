@@ -8,16 +8,12 @@ import {
   Download,
   ExternalLink,
   FileText,
-  Globe,
   Heart,
   Instagram,
   Music2,
   RefreshCw,
-  RotateCcw,
   Search,
   ShoppingBag,
-  Sparkles,
-  Type,
   X,
 } from "lucide-react";
 
