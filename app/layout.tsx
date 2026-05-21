@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -25,6 +26,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <Script
+        defer
+        src="https://analytics.pocapay.com/script.js"
+        data-website-id="19a93e7b-8035-47a8-86bc-c4c343129a6d"
+      />
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
