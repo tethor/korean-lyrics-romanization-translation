@@ -81,9 +81,12 @@ export default function GeniusSearch({ onLyricsLoaded }: Props) {
     setIsOpen(false);
 
     try {
-      const res = await fetch(
-        `/api/lyrics?url=${encodeURIComponent(result.url)}`
-      );
+      const params = new URLSearchParams({
+        url: result.url,
+        artist: result.artist,
+        title: result.title,
+      });
+      const res = await fetch(`/api/lyrics?${params.toString()}`);
       const data = await res.json();
 
       if (!res.ok) {
