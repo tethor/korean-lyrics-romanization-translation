@@ -29,7 +29,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
 
-# Install Playwright system dependencies + fonts for CJK
+# Playwright: install browsers to a fixed path, accessible by nextjs user
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install system deps for Chromium + CJK fonts
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 \
     libdrm2 libdbus-1-3 libxkbcommon0 libatspi2.0-0 libxcomposite1 \
@@ -38,7 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-cjk fonts-noto-color-emoji \
     && rm -rf /var/lib/apt/lists/*
 
-# Create user with home directory
+# Create user
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 --home /home/nextjs --ingroup nodejs nextjs
 
@@ -47,9 +50,11 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Install Playwright browsers as root, then chown everything
+# Install Playwright browsers to /ms-playwright (not /root/.cache)
 RUN npx playwright install chromium
-RUN chown -R nextjs:nodejs /app /home/nextjs /root/.cache/ms-playwright
+
+# Fix ownership: app + playwright cache
+RUN chown -R nextjs:nodejs /app /ms-playwright /home/nextjs
 
 USER nextjs
 
