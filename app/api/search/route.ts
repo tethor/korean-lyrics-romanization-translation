@@ -12,6 +12,55 @@ type GeniusHit = {
   };
 };
 
+// Filter out romanized, translated, and non-original versions
+const SKIP_PATTERNS = [
+  "romanized",
+  "romanization",
+  "english translation",
+  "traducción",
+  "traduccion",
+  "tradução",
+  "translation",
+  "japanese",
+  "japanese translation",
+  "chinese translation",
+  "thai translation",
+  "turkish translation",
+  "french translation",
+  "german translation",
+  "italian translation",
+  "russian translation",
+  "arabic translation",
+  "vietnamese translation",
+  "portuguese translation",
+  "spanish translation",
+  "indonesian translation",
+];
+
+function isOriginalVersion(hit: GeniusHit): boolean {
+  const title = hit.result.title.toLowerCase();
+  const artist = hit.result.artist_names.toLowerCase();
+
+  // Skip if title or artist contains skip patterns
+  for (const pattern of SKIP_PATTERNS) {
+    if (title.includes(pattern) || artist.includes(pattern)) {
+      return false;
+    }
+  }
+
+  // Skip if artist is "Genius Romanizations", "Genius Translations", etc.
+  if (
+    artist.includes("genius romaniz") ||
+    artist.includes("genius translat") ||
+    artist.includes("genius traduc") ||
+    artist.includes("genius traduz")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q");
 
@@ -46,13 +95,17 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     const hits: GeniusHit[] = data.response?.hits || [];
 
-    const results = hits.slice(0, 8).map((hit) => ({
-      id: hit.result.id,
-      title: hit.result.title,
-      artist: hit.result.artist_names,
-      thumbnail: hit.result.song_art_image_thumbnail_url,
-      url: hit.result.url,
-    }));
+    // Filter to only original versions, take top 8
+    const results = hits
+      .filter(isOriginalVersion)
+      .slice(0, 8)
+      .map((hit) => ({
+        id: hit.result.id,
+        title: hit.result.title,
+        artist: hit.result.artist_names,
+        thumbnail: hit.result.song_art_image_thumbnail_url,
+        url: hit.result.url,
+      }));
 
     return NextResponse.json({ results });
   } catch (error) {

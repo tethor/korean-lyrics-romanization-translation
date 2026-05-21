@@ -7,14 +7,7 @@ const BROWSER_HEADERS = {
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
-  "Accept-Encoding": "gzip, deflate, br",
   Referer: "https://genius.com/",
-  "Sec-Fetch-Dest": "document",
-  "Sec-Fetch-Mode": "navigate",
-  "Sec-Fetch-Site": "same-origin",
-  "Sec-Fetch-User": "?1",
-  "Upgrade-Insecure-Requests": "1",
-  "Cache-Control": "no-cache",
 };
 
 function extractLyricsFromHtml(html: string): string | null {
@@ -58,42 +51,64 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // ── 1. Try Genius page scraping ──
-    const res = await fetch(url, { headers: BROWSER_HEADERS });
+    let lyrics: string | null = null;
 
-    if (res.ok) {
-      const html = await res.text();
-      const lyrics = extractLyricsFromHtml(html);
-
-      if (lyrics) {
-        return NextResponse.json({ lyrics });
+    // ── 1. Try direct fetch ──
+    try {
+      const res = await fetch(url, { headers: BROWSER_HEADERS });
+      if (res.ok) {
+        const html = await res.text();
+        lyrics = extractLyricsFromHtml(html);
       }
-    }
+    } catch {}
 
-    // ── 2. Fallback: LRCLIB ──
-    if (artist && title) {
-      const cleanArtist = artist.replace(/\s*\(.*?\)\s*/g, "").trim();
-      const lrclibUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(cleanArtist)}`;
-      const lrclibRes = await fetch(lrclibUrl, {
-        headers: { "User-Agent": "KLyricNeo/1.0" },
-      });
+    // ── 2. Fallback: proxy through allorigins ──
+    if (!lyrics) {
+      try {
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const proxyRes = await fetch(proxyUrl, {
+          headers: { "User-Agent": "KLyricNeo/1.0" },
+        });
 
-      if (lrclibRes.ok) {
-        const results = await lrclibRes.json();
-        if (results.length > 0) {
-          const best = results[0];
-          const rawLyrics = (best.plainLyrics || "").trim();
-          if (rawLyrics) {
-            return NextResponse.json({ lyrics: rawLyrics });
+        if (proxyRes.ok) {
+          const proxyData = await proxyRes.json();
+          const html = proxyData.contents || "";
+          if (html) {
+            lyrics = extractLyricsFromHtml(html);
           }
         }
-      }
+      } catch {}
     }
 
-    return NextResponse.json(
-      { error: "No lyrics found" },
-      { status: 404 }
-    );
+    // ── 3. Fallback: LRCLIB ──
+    if (!lyrics && artist && title) {
+      try {
+        const cleanArtist = artist.replace(/\s*\(.*?\)\s*/g, "").trim();
+        const lrclibUrl = `https://lrclib.net/api/search?track_name=${encodeURIComponent(title)}&artist_name=${encodeURIComponent(cleanArtist)}`;
+        const lrclibRes = await fetch(lrclibUrl, {
+          headers: { "User-Agent": "KLyricNeo/1.0" },
+        });
+
+        if (lrclibRes.ok) {
+          const results = await lrclibRes.json();
+          if (results.length > 0) {
+            const rawLyrics = (results[0].plainLyrics || "").trim();
+            if (rawLyrics) {
+              lyrics = rawLyrics;
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (!lyrics) {
+      return NextResponse.json(
+        { error: "No lyrics found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ lyrics });
   } catch (error: any) {
     console.error("Lyrics fetch error:", error?.message || error);
     return NextResponse.json(
