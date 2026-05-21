@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "aromanize": "^0.1.5",
+    "cheerio": "^1.2.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.555.0",
     "next": "^16.2.6",

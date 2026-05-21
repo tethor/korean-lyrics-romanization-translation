@@ -4,115 +4,96 @@ const DEEPL_API_KEY = process.env.DEEPL_API_KEY;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ─── Simple in-memory cache (per server instance) ───
+// Simple in-memory cache
 const translationCache = new Map<string, string>();
 
 function cacheKey(text: string, lang: string): string {
   return `${lang}::${text}`;
 }
 
-// ─── Batch translation: sends multiple lines in fewer requests ───
+/**
+ * Translate lyrics as sections (blocks separated by empty lines).
+ * Much faster than line-by-line: ~3-5 API calls instead of ~30.
+ * Preserves line structure by splitting translated sections back into lines.
+ */
 export async function translateBatch(
   lines: string[],
   targetLang: "en" | "es"
 ): Promise<string[]> {
   if (lines.length === 0) return [];
 
-  // Filter out empty lines but keep track of indices
-  const nonEmpty: { idx: number; text: string }[] = [];
   const results: string[] = new Array(lines.length).fill("");
 
+  // Group lines into sections (separated by empty lines)
+  const sections: { startIdx: number; lines: string[] }[] = [];
+  let current: { startIdx: number; lines: string[] } | null = null;
+
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim()) {
-      nonEmpty.push({ idx: i, text: lines[i] });
-    }
-  }
-
-  if (nonEmpty.length === 0) return results;
-
-  // Check cache first
-  const toTranslate: { idx: number; text: string }[] = [];
-  for (const item of nonEmpty) {
-    const cached = translationCache.get(cacheKey(item.text, targetLang));
-    if (cached) {
-      results[item.idx] = cached;
+    if (lines[i].trim() === "") {
+      if (current) {
+        sections.push(current);
+        current = null;
+      }
+      results[i] = ""; // keep empty lines
     } else {
-      toTranslate.push(item);
+      if (!current) {
+        current = { startIdx: i, lines: [] };
+      }
+      current.lines.push(lines[i]);
     }
   }
+  if (current) sections.push(current);
 
-  if (toTranslate.length === 0) return results;
+  // Translate each section as a block
+  for (const section of sections) {
+    const combined = section.lines.join("\n");
+    const cached = translationCache.get(cacheKey(combined, targetLang));
 
-  // Batch lines: join with newline separator, send in chunks of ~400 chars
-  const BATCH_CHAR_LIMIT = 400;
-  const batches: { idx: number; text: string }[][] = [];
-  let currentBatch: { idx: number; text: string }[] = [];
-  let currentLen = 0;
-
-  for (const item of toTranslate) {
-    if (currentLen + item.text.length + 1 > BATCH_CHAR_LIMIT && currentBatch.length > 0) {
-      batches.push(currentBatch);
-      currentBatch = [];
-      currentLen = 0;
+    if (cached) {
+      const translatedLines = cached.split("\n");
+      for (let i = 0; i < section.lines.length; i++) {
+        results[section.startIdx + i] = translatedLines[i] || section.lines[i];
+      }
+      continue;
     }
-    currentBatch.push(item);
-    currentLen += item.text.length + 1; // +1 for newline
-  }
-  if (currentBatch.length > 0) batches.push(currentBatch);
 
-  // Process batches with concurrency limit
-  const CONCURRENCY = 3;
-  let batchIdx = 0;
+    try {
+      const translated = await translateText(combined, targetLang);
+      const translatedLines = translated.split("\n");
 
-  const processBatch = async () => {
-    while (batchIdx < batches.length) {
-      const batch = batches[batchIdx++];
-      const combinedText = batch.map((b) => b.text).join("\n");
+      // Map translated lines back to original indices
+      for (let i = 0; i < section.lines.length; i++) {
+        const trans = translatedLines[i] || section.lines[i];
+        results[section.startIdx + i] = trans;
+        translationCache.set(cacheKey(section.lines[i], targetLang), trans);
+      }
 
-      try {
-        const translated = await translateSingle(combinedText, targetLang);
-        const translatedLines = translated.split("\n");
-
-        for (let i = 0; i < batch.length; i++) {
-          const trans = translatedLines[i] || batch[i].text;
-          results[batch[i].idx] = trans;
-          translationCache.set(cacheKey(batch[i].text, targetLang), trans);
-        }
-      } catch {
-        // Fallback: translate individually
-        for (const item of batch) {
-          try {
-            const trans = await translateSingle(item.text, targetLang);
-            results[item.idx] = trans;
-            translationCache.set(cacheKey(item.text, targetLang), trans);
-          } catch {
-            results[item.idx] = item.text;
-          }
-        }
+      // Cache the full section too
+      translationCache.set(cacheKey(combined, targetLang), translated);
+    } catch {
+      // Fallback: keep original
+      for (let i = 0; i < section.lines.length; i++) {
+        results[section.startIdx + i] = section.lines[i];
       }
     }
-  };
+  }
 
-  const workers = Array(Math.min(CONCURRENCY, batches.length))
-    .fill(null)
-    .map(() => processBatch());
-
-  await Promise.all(workers);
   return results;
 }
 
-// ─── Single text translation with retry + DeepL fallback ───
-async function translateSingle(
+/**
+ * Translate a single text block with retry + DeepL fallback.
+ */
+async function translateText(
   text: string,
   targetLang: "en" | "es"
 ): Promise<string> {
   if (!text.trim()) return "";
 
-  const MAX_RETRIES = 2;
   const langPair = `ko|${targetLang}`;
 
-  // 1. Try MyMemory
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  // 1. Try MyMemory (free, 2 retries)
+  for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const res = await fetch(
         `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${langPair}&de=pocapay@pocapay.com`
@@ -128,7 +109,7 @@ async function translateSingle(
 
       throw new Error(`MyMemory: ${data.responseDetails}`);
     } catch (error) {
-      if (attempt < MAX_RETRIES) {
+      if (attempt < 2) {
         await wait(800 * Math.pow(2, attempt - 1));
       }
     }

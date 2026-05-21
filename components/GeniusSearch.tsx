@@ -25,7 +25,6 @@ export default function GeniusSearch({ onLyricsLoaded }: Props) {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -82,12 +81,9 @@ export default function GeniusSearch({ onLyricsLoaded }: Props) {
     setIsOpen(false);
 
     try {
-      const params = new URLSearchParams({
-        artist: result.artist,
-        title: result.title,
-        url: result.url,
-      });
-      const res = await fetch(`/api/lyrics?${params.toString()}`);
+      const res = await fetch(
+        `/api/lyrics?url=${encodeURIComponent(result.url)}`
+      );
       const data = await res.json();
 
       if (!res.ok) {
@@ -142,7 +138,6 @@ export default function GeniusSearch({ onLyricsLoaded }: Props) {
         <p className="text-red-500 text-xs mt-1 font-medium">{error}</p>
       )}
 
-      {/* Dropdown results */}
       {isOpen && results.length > 0 && (
         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] max-h-64 overflow-y-auto">
           {results.map((result) => (
